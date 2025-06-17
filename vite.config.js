@@ -18,7 +18,19 @@ export default defineConfig({
     }),
     uni(),
   ],
-  
+  // 开发服务器配置
+  server: {
+    port: 5173,
+    // 配置代理解决跨域问题
+    proxy: {
+      '/api': {
+        target: 'https://service.iweekly.top',
+        changeOrigin: true,
+        secure: true,
+        // rewrite: (path) => path.replace(/^\/api/, '/api')
+      }
+    }
+  }
 })
 
 
