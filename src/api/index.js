@@ -7,7 +7,15 @@ import http from '@/utils/request'
 
 // 配置基础URL
 //http.setBaseURL('/api') // 开发环境使用代理，生产环境需要修改为实际API地址
-http.setBaseURL('https://service.iweekly.top/api')
+http.setBaseURL('http://192.168.130.15:3000/api')
+
+// 不需要token的接口列表
+const NO_TOKEN_APIS = [
+  '/home/brand',  // 获取品牌列表
+  '/auth/login',  // 用户登录
+  '/auth/wechat-login',  // 微信登录
+  // 可以根据需要添加更多不需要token的接口
+]
 
 // 添加请求拦截器
 http.addRequestInterceptor(
@@ -15,12 +23,25 @@ http.addRequestInterceptor(
     // 在发送请求之前做些什么
     console.log('发送请求:', config)
     
-    // 添加token到请求头
-    const token = uni.getStorageSync('token')
-    if (token) {
-      config.header = {
-        ...config.header,
-        'Authorization': `Bearer ${token}`
+    // 检查是否需要添加token
+    const needsToken = !NO_TOKEN_APIS.some(api => config.url.includes(api))
+    
+    if (needsToken) {
+      // 添加token到请求头
+      const token = uni.getStorageSync('token')
+      if (token) {
+        config.header = {
+          ...config.header,
+          'Authorization': `Bearer ${token}`
+        }
+      } else {
+        // 如果需要token但没有token，提示用户登录
+        console.warn('接口需要token但未找到有效token:', config.url)
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none',
+          duration: 2000
+        })
       }
     }
     
@@ -81,10 +102,30 @@ http.addResponseInterceptor(
     if (error.statusCode === 401) {
       // 清除本地token
       uni.removeStorageSync('token')
-      // 跳转到登录页面
-      uni.navigateTo({
-        url: '/pages/login/login'
+      
+      uni.showToast({
+        title: '登录已过期，请重新登录',
+        icon: 'none',
+        duration: 2000
       })
+      
+      // 延迟跳转到登录页面（如果有登录页面的话）
+      setTimeout(() => {
+        // uni.navigateTo({
+        //   url: '/pages/login/login'
+        // })
+        console.log('需要跳转到登录页面')
+      }, 2000)
+    } else {
+      // 处理其他错误，避免重复显示access_token missing错误
+      const message = error.errMsg || error.message || '请求失败'
+      if (!message.includes('access_token missing')) {
+        uni.showToast({
+          title: message,
+          icon: 'none',
+          duration: 2000
+        })
+      }
     }
     
     return Promise.reject(error)
@@ -95,6 +136,9 @@ http.addResponseInterceptor(
 export const userApi = {
   // 用户登录
   login: (data) => http.post('/auth/login', data),
+  
+  // 微信登录
+  wechatLogin: (data) => http.post('/auth/wechat-login', data),
   
   // 获取用户信息
   getUserInfo: () => http.get('/user/info'),
