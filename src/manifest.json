@@ -1,6 +1,6 @@
 {
   "name": "miniprogram_frontend",
-  "appid": "wxb3e6aa3581795b7e",
+  "appid": "wx68f4c74ca2a64bee",
   "description": "",
   "versionName": "1.0.0",
   "versionCode": "100",
@@ -49,7 +49,7 @@
   },
   "quickapp": {},
   "mp-weixin": {
-    "appid": "wxb3e6aa3581795b7e",
+    "appid": "wx68f4c74ca2a64bee",
     "setting": {
       "urlCheck": false
     },

@@ -6,15 +6,15 @@
 import http from '@/utils/request'
 
 // 配置基础URL
-//http.setBaseURL('/api') // 开发环境使用代理，生产环境需要修改为实际API地址
-http.setBaseURL('http://192.168.130.15:3000/api')
+// http.setBaseURL('/api') // 开发环境使用代理，生产环境需要修改为实际API地址
+http.setBaseURL('https://service.iweekly.top/api')
 
 // 不需要token的接口列表
 const NO_TOKEN_APIS = [
   '/home/brand',  // 获取品牌列表
   '/auth/login',  // 用户登录
-  '/auth/wechat-login',  // 微信登录
-  // 可以根据需要添加更多不需要token的接口
+  '/user/wechat-login',  // 微信登录
+
 ]
 
 // 添加请求拦截器
@@ -72,19 +72,39 @@ http.addResponseInterceptor(
     const { data, statusCode } = response
     
     if (statusCode === 200) {
-      // 根据统一的返回格式处理：{ code: 200, data: {...}, msg: "..." }
-      if (data.code === 200) {
-        // 成功：返回实际数据
-        return data.data
+      // 兼容两种返回格式：
+      // 格式1: { code: 200, data: {...}, msg: "..." }
+      // 格式2: 直接返回数据对象 { token: "...", user: {...} }
+      
+      if (data.code !== undefined) {
+        // 格式1：有 code 字段
+        if (data.code === 200) {
+          // 成功：返回实际数据
+          return data.data
+        } else {
+          // 业务错误：显示错误消息
+          const message = data.msg || data.message || '请求失败'
+          uni.showToast({
+            title: message,
+            icon: 'none',
+            duration: 2000
+          })
+          return Promise.reject(new Error(message))
+        }
       } else {
-        // 业务错误：显示错误消息
-        const message = data.msg || data.message || '请求失败'
-        uni.showToast({
-          title: message,
-          icon: 'none',
-          duration: 2000
-        })
-        return Promise.reject(new Error(message))
+        // 格式2：直接返回数据对象
+        // 检查是否是错误响应（通常错误会有 error 或 message 字段）
+        if (data.error || (data.message && !data.token && !data.user)) {
+          const message = data.error || data.message || '请求失败'
+          uni.showToast({
+            title: message,
+            icon: 'none',
+            duration: 2000
+          })
+          return Promise.reject(new Error(message))
+        }
+        // 成功：直接返回数据
+        return data
       }
     } else {
       // HTTP状态码错误
@@ -138,7 +158,7 @@ export const userApi = {
   login: (data) => http.post('/auth/login', data),
   
   // 微信登录
-  wechatLogin: (data) => http.post('/auth/wechat-login', data),
+  wechatLogin: (data) => http.post('/user/wechat-login', data),
   
   // 获取用户信息
   getUserInfo: () => http.get('/user/info'),
